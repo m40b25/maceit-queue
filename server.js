@@ -51,13 +51,25 @@ wss.on('connection', (ws) => {
       if (!m) return;
       m.accepted.add(ws);
 
-      if (m.accepted.size === 2) {
-        m.p1.send(JSON.stringify({ type: 'match_ready', opponent: clients.get(m.p2), kitTier: m.kitTier }));
-        m.p2.send(JSON.stringify({ type: 'match_ready', opponent: clients.get(m.p1), kitTier: m.kitTier }));
+          if (m.accepted.size === 2) {
+        const p1Data = clients.get(m.p1);
+        const p2Data = clients.get(m.p2);
+
+        const setupEvent = JSON.stringify({
+          type: 'run_setup',
+          cmd: `maceitsetup ${p1Data.name} ${p2Data.name} ${m.kitTier}`
+        });
+        for (const c of wss.clients) {
+          if (c.readyState === WebSocket.OPEN) c.send(setupEvent);
+        }
+
+        m.p1.send(JSON.stringify({ type: 'match_ready', opponent: p2Data, kitTier: m.kitTier }));
+        m.p2.send(JSON.stringify({ type: 'match_ready', opponent: p1Data, kitTier: m.kitTier }));
         matches.delete(d.matchId);
       }
     }
   });
+
 
   ws.on('close', () => {
     queue = queue.filter(c => c !== ws);
