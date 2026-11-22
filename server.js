@@ -3,6 +3,15 @@ const PORT = process.env.PORT || 8080;
 const wss = new WebSocket.Server({ port: PORT });
 
 let clients = new Map(), queue = [], matches = new Map();
+let leaderboard = new Map(); // name -> { name, elo, bestStreak }
+
+function broadcastLeaderboard() {
+  const list = Array.from(leaderboard.values()).sort((a, b) => b.elo - a.elo);
+  const msg = JSON.stringify({ type: 'leaderboard_update', list });
+  for (const c of wss.clients) {
+    if (c.readyState === WebSocket.OPEN) c.send(msg);
+  }
+}
 
 console.log(`[MaceIt Queue] Live server running on port ${PORT}`);
 
@@ -21,10 +30,19 @@ wss.on('connection', (ws) => {
     let d;
     try { d = JSON.parse(raw); } catch { return; }
 
-    if (d.type === 'register') {
-      clients.set(ws, { name: d.name, elo: d.elo });
-      broadcastOnline();
-    }
+if (d.type === 'register') {
+  clients.set(ws, { name: d.name, elo: d.elo });
+  if (d.name) {
+    const prev = leaderboard.get(d.name) || { name: d.name, elo: 100, bestStreak: 0 };
+    leaderboard.set(d.name, {
+      name: d.name,
+      elo: d.elo || prev.elo,
+      bestStreak: Math.max(prev.bestStreak, d.bestStreak || 0)
+    });
+  }
+  broadcastOnline();
+  broadcastLeaderboard();
+}
 
     if (d.type === 'join_queue') {
       clients.set(ws, { name: d.name, elo: d.elo, kitTier: d.kitTier });
