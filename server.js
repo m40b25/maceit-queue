@@ -55,7 +55,7 @@ wss.on('connection', (ws) => {
         const p1Data = clients.get(m.p1);
         const p2Data = clients.get(m.p2);
 
-        const setupEvent = JSON.stringify({
+              const setupEvent = JSON.stringify({
           type: 'run_setup',
           cmd: `maceitsetup ${p1Data.name} ${p2Data.name} ${m.kitTier}`
         });
@@ -68,7 +68,19 @@ wss.on('connection', (ws) => {
         matches.delete(d.matchId);
       }
     }
+
+    if (d.type === 'match_result') {
+      const msg = JSON.stringify({
+        type: 'auto_result',
+        winner: d.winner,
+        loser: d.loser
+      });
+      for (const c of wss.clients) {
+        if (c.readyState === WebSocket.OPEN) c.send(msg);
+      }
+    }
   });
+
 
 
   ws.on('close', () => {
