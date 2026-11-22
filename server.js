@@ -25,6 +25,7 @@ function broadcastOnline() {
 wss.on('connection', (ws) => {
   clients.set(ws, { name: 'Player', elo: 100 });
   broadcastOnline();
+  broadcastLeaderboard();
 
   ws.on('message', (raw) => {
     let d;
